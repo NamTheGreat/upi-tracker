@@ -7,13 +7,27 @@ void main() {
   runApp(MyApp());
 }
 
+const List<String> CATEGORIES = [
+  'Food',
+  'Grocery',
+  'Shopping',
+  'Travel',
+  'Utilities',
+  'Entertainment',
+  'Health',
+  'Transfer',
+  'Rent',
+  'Education',
+  'Other',
+];
+
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'UPI Tracker',
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
       home: HomeScreen(),
@@ -22,41 +36,49 @@ class MyApp extends StatelessWidget {
 }
 
 class Transaction {
+  String id;
   String merchant;
   double amount;
   String category;
   DateTime date;
   bool isDebit;
-  String rawSms;
+  String? rawSms;
+  bool isManual;
 
   Transaction({
+    required this.id,
     required this.merchant,
     required this.amount,
     required this.category,
     required this.date,
     this.isDebit = true,
-    required this.rawSms,
+    this.rawSms,
+    this.isManual = false,
   });
 
   Map toJson() {
     return {
+      'id': id,
       'merchant': merchant,
       'amount': amount,
       'category': category,
       'date': date.toIso8601String(),
       'isDebit': isDebit,
       'rawSms': rawSms,
+      'isManual': isManual,
     };
   }
 
   static Transaction fromJson(Map json) {
     return Transaction(
+      id: json['id'],
       merchant: json['merchant'],
       amount: json['amount'],
       category: json['category'],
       date: DateTime.parse(json['date']),
       isDebit: json['isDebit'],
       rawSms: json['rawSms'],
+      isManual: json['isManual'] ?? false,
     );
   }
 }
@@ -68,189 +90,511 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State {
   static const platform = MethodChannel('com.upitracker/sms');
-  List transactions = [];
+  List _transactions = [];
   SharedPreferences? _prefs;
+
+  // Filters
+  
+  String? _filterCategory;
+  DateTime? _filterStartDate;
+  DateTime? _filterEndDate;
 
   @override
   void initState() {
     super.initState();
     _initStorage();
-   platform.setMethodCallHandler((call) async {
+    _setupSmsListener();
+  }
+
+  void _setupSmsListener() {
+    platform.setMethodCallHandler((call) async {
       if (call.method == 'onSmsReceived') {
         final body = call.arguments['body'] as String;
         final tx = _parseSms(body);
-        
-        // Only track debits (money spent), ignore credits
-        if (tx.isDebit) {
+        if (tx != null && tx.isDebit) {
           setState(() {
-            transactions.insert(0, tx);
+            _transactions.insert(0, tx);
           });
           _saveTransactions();
         }
       }
     });
-
   }
 
   Future<void> _initStorage() async {
     _prefs = await SharedPreferences.getInstance();
     final saved = _prefs?.getString('transactions');
-    if (saved != null) {
-      final list = jsonDecode(saved) as List;
-      setState(() {
-        transactions = list.map((item) => Transaction.fromJson(item)).toList();
-      });
+    if (saved != null && saved.isNotEmpty) {
+      try {
+        final list = jsonDecode(saved) as List;
+        setState(() {
+          _transactions = list
+              .map((item) => Transaction.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+        });
+      } catch (e) {
+        debugPrint('Load error: $e');
+      }
     }
   }
 
   Future<void> _saveTransactions() async {
-    final list = transactions.map((tx) => (tx as Transaction).toJson()).toList();
+    final list = _transactions.map((tx) => (tx as Transaction).toJson()).toList();
     await _prefs?.setString('transactions', jsonEncode(list));
   }
- 
-  Transaction _parseSms(String body) {
-  final lower = body.toLowerCase();
-  
-  // Only process UPI-related SMS
-  final isUPI = lower.contains('upi') || 
-                lower.contains('debited') || 
-                lower.contains('credited') ||
-                lower.contains('inr') || 
-                lower.contains('rs.') ||
-                lower.contains('trf') ||
-                lower.contains('transfer');
-  
-  if (!isUPI) {
-    return Transaction(
-      merchant: 'Ignored',
-      amount: 0,
-      category: 'Non-UPI',
-      date: DateTime.now(),
-      isDebit: true,
-      rawSms: body,
-    );
-  }
-  
-  final isDebit = !lower.contains('credited') && !lower.contains('received');
 
-  // Extract amount - handles all bank formats
-  final amountPatterns = [
-    // Standard: Rs. 500, INR 500, ₹500
-    RegExp(r'(?:inr|rs\.?|₹)\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
-    // SBI: debited by 600.00
-    RegExp(r'(?:debited|credited|received|paid|sent)\s+(?:by|for|of|with)?\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
-    // Axis/ICICI: towards Spotify for INR 59
-    RegExp(r'(?:for|of)\s+(?:inr|rs\.?|₹)?\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
-    // Fallback: any number before UPI/on/via/to
-    RegExp(r'\b([\d,]+\.?\d{0,2})\b(?=\s*(?:on|via|upi|to|from|trf|transfer|date))', caseSensitive: false),
-  ];
+  Transaction? _parseSms(String body) {
+    final lower = body.toLowerCase();
 
-  double amount = 0;
-  for (final pattern in amountPatterns) {
-    final match = pattern.firstMatch(body);
-    if (match != null) {
-      final parsed = double.tryParse(
-        match.group(1)?.replaceAll(',', '') ?? '0'
-      ) ?? 0;
-      if (parsed > 0) {
-        amount = parsed;
+    final isUPI = lower.contains('upi') ||
+        lower.contains('debited') ||
+        lower.contains('credited') ||
+        lower.contains('inr') ||
+        lower.contains('rs.') ||
+        lower.contains('trf') ||
+        lower.contains('transfer');
+
+    if (!isUPI) return null;
+
+    final isDebit = !lower.contains('credited') && !lower.contains('received');
+
+    final amountPatterns = [
+      RegExp(r'(?:inr|rs\.?|₹)\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
+      RegExp(r'(?:debited|credited|received|paid|sent)\s+(?:by|for|of|with)?\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
+      RegExp(r'(?:for|of)\s+(?:inr|rs\.?|₹)?\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
+      RegExp(r'\b([\d,]+\.?\d{0,2})\b(?=\s*(?:on|via|upi|to|from|trf|transfer|date))', caseSensitive: false),
+    ];
+
+    double amount = 0;
+    for (final pattern in amountPatterns) {
+      final match = pattern.firstMatch(body);
+      if (match != null) {
+        final parsed = double.tryParse(
+          match.group(1)?.replaceAll(',', '') ?? '0',
+        ) ?? 0;
+        if (parsed > 0) {
+          amount = parsed;
+          break;
+        }
+      }
+    }
+
+    if (amount > 100000 || amount == 0) {
+      return Transaction(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        merchant: 'Invalid',
+        amount: amount,
+        category: 'Parse Error',
+        date: DateTime.now(),
+        isDebit: isDebit,
+        rawSms: body,
+      );
+    }
+
+    String merchant = 'Unknown';
+    final merchantPatterns = [
+      RegExp(r'(?:trf|transfer)\s+to\s+([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+Ref|\s+If|\s+for|\s+via|$)', caseSensitive: false),
+      RegExp(r'towards\s+([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+for|\s+via|\s+UPI|\s+on|\s+\d)', caseSensitive: false),
+      RegExp(r'(?:to|from)\s*:?\s*([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+for|\s+via|\s+UPI|\s+Ref|\s+If)', caseSensitive: false),
+    ];
+
+    for (final pattern in merchantPatterns) {
+      final match = pattern.firstMatch(body);
+      if (match != null) {
+        merchant = match.group(1)?.trim() ?? 'Unknown';
+        if (merchant.isNotEmpty && merchant != 'Unknown') break;
+      }
+    }
+
+    String category = 'Unknown';
+    final rules = {
+      'Food': r'swiggy|zomato|dominos|foodpanda|uber.*eats|restaurant',
+      'Grocery': r'bigbasket|blinkit|zepto|dmart|grocery|grofers',
+      'Shopping': r'amazon|flipkart|myntra|ajio|nykaa',
+      'Travel': r'uber|ola|rapido|redbus|makemytrip|irctc',
+      'Utilities': r'jio|airtel|vodafone|bsnl|electricity|recharge',
+      'Entertainment': r'netflix|prime|hotstar|spotify|youtube',
+      'Health': r'pharmacy|medplus|apollo|1mg|netmeds',
+      'Transfer': r'trf|transfer',
+    };
+    for (final entry in rules.entries) {
+      if (RegExp(entry.value, caseSensitive: false).hasMatch(body)) {
+        category = entry.key;
         break;
       }
     }
-  }
-  
-  // Sanity check
-  if (amount > 100000 || amount == 0) {
+
     return Transaction(
-      merchant: 'Invalid',
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      merchant: merchant,
       amount: amount,
-      category: 'Parse Error',
+      category: category,
       date: DateTime.now(),
       isDebit: isDebit,
       rawSms: body,
     );
   }
 
-  // Extract merchant - handles all formats
-  String merchant = 'Unknown';
-  final merchantPatterns = [
-    // SBI: trf to ISSHITA KALIA
-    RegExp(r'(?:trf|transfer)\s+to\s+([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+Ref|\s+If|\s+for|\s+via|$)', caseSensitive: false),
-    // Standard: towards Spotify India
-    RegExp(r'towards\s+([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+for|\s+via|\s+UPI|\s+on|\s+\d)', caseSensitive: false),
-    // Generic: to/from Name
-    RegExp(r'(?:to|from)\s*:?\s*([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+for|\s+via|\s+UPI|\s+Ref|\s+If)', caseSensitive: false),
-  ];
-  
-  for (final pattern in merchantPatterns) {
-    final match = pattern.firstMatch(body);
-    if (match != null) {
-      merchant = match.group(1)?.trim() ?? 'Unknown';
-      if (merchant.isNotEmpty && merchant != 'Unknown') break;
-    }
+  List get _filteredTransactions {
+    return _transactions.where((tx) {
+      final t = tx as Transaction;
+      if (_filterCategory != null && t.category != _filterCategory) {
+        return false;
+      }
+      if (_filterStartDate != null && t.date.isBefore(_filterStartDate!)) {
+        return false;
+      }
+      if (_filterEndDate != null) {
+        final end = DateTime(_filterEndDate!.year, _filterEndDate!.month, _filterEndDate!.day, 23, 59, 59);
+        if (t.date.isAfter(end)) return false;
+      }
+      return true;
+    }).toList();
   }
 
-  // Detect category
-  String category = 'Unknown';
-  final rules = {
-    'Food': r'swiggy|zomato|dominos|foodpanda|uber.*eats|restaurant',
-    'Grocery': r'bigbasket|blinkit|zepto|dmart|grocery|grofers',
-    'Shopping': r'amazon|flipkart|myntra|ajio|nykaa',
-    'Travel': r'uber|ola|rapido|redbus|makemytrip|irctc',
-    'Utilities': r'jio|airtel|vodafone|bsnl|electricity|recharge',
-    'Entertainment': r'netflix|prime|hotstar|spotify|youtube',
-    'Health': r'pharmacy|medplus|apollo|1mg|netmeds',
-    'Transfer': r'trf|transfer',
-  };
-  for (final entry in rules.entries) {
-    if (RegExp(entry.value, caseSensitive: false).hasMatch(body)) {
-      category = entry.key;
-      break;
-    }
+  void _clearFilters() {
+    setState(() {
+      _filterCategory = null;
+      _filterStartDate = null;
+      _filterEndDate = null;
+    });
   }
 
-  return Transaction(
-    merchant: merchant,
-    amount: amount,
-    category: category,
-    date: DateTime.now(),
-    isDebit: isDebit,
-    rawSms: body,
-  );
-}
+  void _showTransactionForm({Transaction? transaction, int? index}) {
+    final isEdit = transaction != null;
+    final merchantController = TextEditingController(text: isEdit ? transaction.merchant : '');
+    final amountController = TextEditingController(text: isEdit ? transaction.amount.toString() : '');
+    String selectedCategory = isEdit ? transaction!.category : CATEGORIES[0];
+    DateTime selectedDate = isEdit ? transaction!.date : DateTime.now();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setModalState) => SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    isEdit ? 'Edit Transaction' : 'Add Transaction',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: merchantController,
+                    decoration: const InputDecoration(
+                      labelText: 'Merchant',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.store),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: amountController,
+                    decoration: const InputDecoration(
+                      labelText: 'Amount (₹)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.currency_rupee),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'Category',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.category),
+                    ),
+                    items: CATEGORIES.map((cat) => DropdownMenuItem(
+                      value: cat,
+                      child: Text(cat),
+                    )).toList(),
+                    onChanged: (val) => setModalState(() => selectedCategory = val!),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: Colors.grey.shade400),
+                    ),
+                    leading: const Icon(Icons.calendar_today),
+                    title: const Text('Date'),
+                    subtitle: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        setModalState(() => selectedDate = picked);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (isEdit) ...[
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          tooltip: 'Delete',
+                          onPressed: () {
+                            setState(() {
+                              _transactions.removeAt(index!);
+                            });
+                            _saveTransactions();
+                            Navigator.pop(context);
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy),
+                          tooltip: 'Duplicate',
+                          onPressed: () {
+                            final amount = double.tryParse(amountController.text) ?? 0;
+                            if (amount <= 0 || merchantController.text.isEmpty) return;
+
+                            final duplicate = Transaction(
+                              id: DateTime.now().millisecondsSinceEpoch.toString(),
+                              merchant: merchantController.text,
+                              amount: amount,
+                              category: selectedCategory,
+                              date: DateTime.now(),
+                              isDebit: true,
+                              rawSms: null,
+                              isManual: true,
+                            );
+                            setState(() => _transactions.insert(0, duplicate));
+                            _saveTransactions();
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ],
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('CANCEL'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          final amount = double.tryParse(amountController.text) ?? 0;
+                          if (amount <= 0 || merchantController.text.isEmpty) return;
+
+                          final newTx = Transaction(
+                            id: isEdit ? transaction!.id : DateTime.now().millisecondsSinceEpoch.toString(),
+                            merchant: merchantController.text,
+                            amount: amount,
+                            category: selectedCategory,
+                            date: selectedDate,
+                            isDebit: true,
+                            rawSms: isEdit ? transaction!.rawSms : null,
+                            isManual: isEdit ? transaction!.isManual : true,
+                          );
+
+                          setState(() {
+                            if (isEdit) {
+                              _transactions[index!] = newTx;
+                            } else {
+                              _transactions.insert(0, newTx);
+                            }
+                          });
+                          _saveTransactions();
+                          Navigator.pop(context);
+                        },
+                        child: Text(isEdit ? 'SAVE' : 'ADD'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFilterSheet() {
+    String? tempCategory = _filterCategory;
+    DateTime? tempStart = _filterStartDate;
+    DateTime? tempEnd = _filterEndDate;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String?>(
+                value: tempCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('All Categories')),
+                  ...CATEGORIES.map((cat) => DropdownMenuItem(
+                    value: cat,
+                    child: Text(cat),
+                  )),
+                ],
+                onChanged: (val) => setModalState(() => tempCategory = val),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade400),
+                ),
+                leading: const Icon(Icons.date_range),
+                title: const Text('Start Date'),
+                subtitle: Text(tempStart != null ? '${tempStart!.day}/${tempStart!.month}/${tempStart!.year}' : 'Any'),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: tempStart ?? DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setModalState(() => tempStart = picked);
+                },
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade400),
+                ),
+                leading: const Icon(Icons.date_range),
+                title: const Text('End Date'),
+                subtitle: Text(tempEnd != null ? '${tempEnd!.day}/${tempEnd!.month}/${tempEnd!.year}' : 'Any'),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: tempEnd ?? DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setModalState(() => tempEnd = picked);
+                },
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      _clearFilters();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('CLEAR ALL'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _filterCategory = tempCategory;
+                        _filterStartDate = tempStart;
+                        _filterEndDate = tempEnd;
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('APPLY'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final displayList = _filteredTransactions;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('UPI Tracker'),
+        title: const Text('UPI Tracker'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: () async {
-              setState(() => transactions.clear());
-              await _prefs?.remove('transactions');
-            },
+            icon: const Icon(Icons.filter_list),
+            onPressed: _showFilterSheet,
           ),
         ],
       ),
-      body: transactions.isEmpty
+      body: displayList.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.sms_failed, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('No transactions yet', style: TextStyle(fontSize: 18)),
+                  const Icon(Icons.sms_failed, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text('No transactions yet', style: TextStyle(fontSize: 18)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Send a UPI SMS or tap + to add manually',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             )
           : ListView.builder(
-              itemCount: transactions.length,
+              itemCount: displayList.length,
               itemBuilder: (context, index) {
-                final tx = transactions[index] as Transaction;
+                final tx = displayList[index] as Transaction;
                 return Card(
-                  margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: tx.isDebit ? Colors.red.shade100 : Colors.green.shade100,
@@ -268,42 +612,17 @@ class _HomeScreenState extends State {
                         color: tx.isDebit ? Colors.red : Colors.green,
                       ),
                     ),
-                    onTap: () => _showDetail(tx),
+                    onTap: () => _showTransactionForm(
+                      transaction: tx,
+                      index: _transactions.indexOf(tx),
+                    ),
                   ),
                 );
               },
             ),
-    );
-  }
-
-  void _showDetail(Transaction tx) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(tx.merchant, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Text('₹${tx.amount.toStringAsFixed(2)}', style: TextStyle(
-              fontSize: 32,
-              color: tx.isDebit ? Colors.red : Colors.green,
-              fontWeight: FontWeight.bold,
-            )),
-            SizedBox(height: 16),
-            Text('Category: ${tx.category}'),
-            Text('Date: ${_formatDate(tx.date)}'),
-            SizedBox(height: 16),
-            Text('Raw SMS:', style: TextStyle(fontWeight: FontWeight.bold)),
-            Container(
-              padding: EdgeInsets.all(12),
-              color: Colors.grey.shade100,
-              child: Text(tx.rawSms, style: TextStyle(fontSize: 12)),
-            ),
-          ],
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showTransactionForm(),
+        child: const Icon(Icons.add),
       ),
     );
   }
