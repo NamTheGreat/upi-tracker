@@ -307,7 +307,7 @@ class _HomeScreenState extends State {
                   TextField(
                     controller: merchantController,
                     decoration: const InputDecoration(
-                      labelText: 'Merchant',
+                      labelText: 'Merchant *',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.store),
                     ),
@@ -316,7 +316,7 @@ class _HomeScreenState extends State {
                   TextField(
                     controller: amountController,
                     decoration: const InputDecoration(
-                      labelText: 'Amount (₹)',
+                      labelText: 'Amount (₹) *',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.currency_rupee),
                     ),
@@ -359,12 +359,9 @@ class _HomeScreenState extends State {
                   ),
                   const SizedBox(height: 24),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       if (isEdit) ...[
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          tooltip: 'Delete',
+                        TextButton(
                           onPressed: () {
                             setState(() {
                               _transactions.removeAt(index!);
@@ -372,17 +369,59 @@ class _HomeScreenState extends State {
                             _saveTransactions();
                             Navigator.pop(context);
                           },
+                          child: const Text('DELETE', style: TextStyle(color: Colors.red)),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.copy),
-                          tooltip: 'Duplicate',
+                        const Spacer(),
+                        OutlinedButton(
                           onPressed: () {
-                            final amount = double.tryParse(amountController.text) ?? 0;
-                            if (amount <= 0 || merchantController.text.isEmpty) return;
+                            final merchant = merchantController.text.trim();
+                            final amountText = amountController.text.trim();
+
+                            String? errorTitle;
+                            String? errorMessage;
+
+                            if (merchant.isEmpty && amountText.isEmpty) {
+                              errorTitle = 'Missing Fields';
+                              errorMessage = 'Please enter both merchant name and amount.';
+                            } else if (merchant.isEmpty) {
+                              errorTitle = 'Missing Merchant';
+                              errorMessage = 'Please enter a merchant name.';
+                            } else if (amountText.isEmpty) {
+                              errorTitle = 'Missing Amount';
+                              errorMessage = 'Please enter an amount.';
+                            } else {
+                              final amount = double.tryParse(amountText);
+                              if (amount == null) {
+                                errorTitle = 'Invalid Amount';
+                                errorMessage = 'Please enter a valid number for the amount.';
+                              } else if (amount <= 0) {
+                                errorTitle = 'Invalid Amount';
+                                errorMessage = 'Amount must be greater than 0.';
+                              }
+                            }
+
+                            if (errorTitle != null) {
+                              showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: Text(errorTitle!),
+                                  content: Text(errorMessage!),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
+
+                            final amount = double.parse(amountText);
 
                             final duplicate = Transaction(
                               id: DateTime.now().millisecondsSinceEpoch.toString(),
-                              merchant: merchantController.text,
+                              merchant: merchant,
                               amount: amount,
                               category: selectedCategory,
                               date: DateTime.now(),
@@ -394,9 +433,12 @@ class _HomeScreenState extends State {
                             _saveTransactions();
                             Navigator.pop(context);
                           },
+                          child: const Text('DUPLICATE'),
                         ),
+                        const SizedBox(width: 8),
+                      ] else ...[
+                        const Spacer(),
                       ],
-                      const Spacer(),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: const Text('CANCEL'),
@@ -404,12 +446,54 @@ class _HomeScreenState extends State {
                       const SizedBox(width: 8),
                       ElevatedButton(
                         onPressed: () {
-                          final amount = double.tryParse(amountController.text) ?? 0;
-                          if (amount <= 0 || merchantController.text.isEmpty) return;
+                          final merchant = merchantController.text.trim();
+                          final amountText = amountController.text.trim();
+
+                          String? errorTitle;
+                          String? errorMessage;
+
+                          if (merchant.isEmpty && amountText.isEmpty) {
+                            errorTitle = 'Missing Fields';
+                            errorMessage = 'Please enter both merchant name and amount.';
+                          } else if (merchant.isEmpty) {
+                            errorTitle = 'Missing Merchant';
+                            errorMessage = 'Please enter a merchant name.';
+                          } else if (amountText.isEmpty) {
+                            errorTitle = 'Missing Amount';
+                            errorMessage = 'Please enter an amount.';
+                          } else {
+                            final amount = double.tryParse(amountText);
+                            if (amount == null) {
+                              errorTitle = 'Invalid Amount';
+                              errorMessage = 'Please enter a valid number for the amount.';
+                            } else if (amount <= 0) {
+                              errorTitle = 'Invalid Amount';
+                              errorMessage = 'Amount must be greater than 0.';
+                            }
+                          }
+
+                          if (errorTitle != null) {
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: Text(errorTitle!),
+                                content: Text(errorMessage!),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            return;
+                          }
+
+                          final amount = double.parse(amountText);
 
                           final newTx = Transaction(
                             id: isEdit ? transaction!.id : DateTime.now().millisecondsSinceEpoch.toString(),
-                            merchant: merchantController.text,
+                            merchant: merchant,
                             amount: amount,
                             category: selectedCategory,
                             date: selectedDate,
@@ -433,7 +517,6 @@ class _HomeScreenState extends State {
                     ],
                   ),
                   const SizedBox(height: 12),
-
                 ],
               ),
             ),
