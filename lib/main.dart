@@ -104,85 +104,115 @@ class _HomeScreenState extends State {
   }
 
   Transaction _parseSms(String body) {
-    final lower = body.toLowerCase();
-    
-    // Only process UPI-related SMS
-    final isUPI = lower.contains('upi') || 
-                  lower.contains('debited') || 
-                  lower.contains('credited') ||
-                  lower.contains('inr') || 
-                  lower.contains('rs.');
-    
-    if (!isUPI) {
-      return Transaction(
-        merchant: 'Ignored',
-        amount: 0,
-        category: 'Non-UPI',
-        date: DateTime.now(),
-        isDebit: true,
-        rawSms: body,
-      );
-    }
-    
-    final isDebit = !lower.contains('credited') && !lower.contains('received');
+  final lower = body.toLowerCase();
+  
+  // Only process UPI-related SMS
+  final isUPI = lower.contains('upi') || 
+                lower.contains('debited') || 
+                lower.contains('credited') ||
+                lower.contains('inr') || 
+                lower.contains('rs.') ||
+                lower.contains('trf') ||
+                lower.contains('transfer');
+  
+  if (!isUPI) {
+    return Transaction(
+      merchant: 'Ignored',
+      amount: 0,
+      category: 'Non-UPI',
+      date: DateTime.now(),
+      isDebit: true,
+      rawSms: body,
+    );
+  }
+  
+  final isDebit = !lower.contains('credited') && !lower.contains('received');
 
-    // Extract amount
-    final amountMatch = RegExp(r'(?:inr|rs\.?|₹)\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false).firstMatch(body);
-    final amount = double.tryParse(
-      amountMatch?.group(1)?.replaceAll(',', '') ?? '0'
-    ) ?? 0;
-    
-    // Sanity check
-    if (amount > 100000 || amount == 0) {
-      return Transaction(
-        merchant: 'Invalid',
-        amount: amount,
-        category: 'Parse Error',
-        date: DateTime.now(),
-        isDebit: isDebit,
-        rawSms: body,
-      );
-    }
+  // Extract amount - handles all bank formats
+  final amountPatterns = [
+    // Standard: Rs. 500, INR 500, ₹500
+    RegExp(r'(?:inr|rs\.?|₹)\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
+    // SBI: debited by 600.00
+    RegExp(r'(?:debited|credited|received|paid|sent)\s+(?:by|for|of|with)?\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
+    // Axis/ICICI: towards Spotify for INR 59
+    RegExp(r'(?:for|of)\s+(?:inr|rs\.?|₹)?\s*([\d,]+\.?\d{0,2})\b', caseSensitive: false),
+    // Fallback: any number before UPI/on/via/to
+    RegExp(r'\b([\d,]+\.?\d{0,2})\b(?=\s*(?:on|via|upi|to|from|trf|transfer|date))', caseSensitive: false),
+  ];
 
-    // Extract merchant
-    String merchant = 'Unknown';
-    final towardsMatch = RegExp(r'towards\s+([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+for|\s+via|\s+UPI|\s+on|\s+\d)', caseSensitive: false).firstMatch(body);
-    if (towardsMatch != null) {
-      merchant = towardsMatch.group(1)?.trim() ?? 'Unknown';
-    } else {
-      final toMatch = RegExp(r'(?:to|from)\s*:?\s*([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+for|\s+via|\s+UPI|\s+Ref)', caseSensitive: false).firstMatch(body);
-      if (toMatch != null) {
-        merchant = toMatch.group(1)?.trim() ?? 'Unknown';
-      }
-    }
-
-    // Detect category
-    String category = 'Unknown';
-    final rules = {
-      'Food': r'swiggy|zomato|dominos|foodpanda|uber.*eats|restaurant',
-      'Grocery': r'bigbasket|blinkit|zepto|dmart|grocery|grofers',
-      'Shopping': r'amazon|flipkart|myntra|ajio|nykaa',
-      'Travel': r'uber|ola|rapido|redbus|makemytrip|irctc',
-      'Utilities': r'jio|airtel|vodafone|bsnl|electricity|recharge',
-      'Entertainment': r'netflix|prime|hotstar|spotify|youtube',
-      'Health': r'pharmacy|medplus|apollo|1mg|netmeds',
-    };
-    for (final entry in rules.entries) {
-      if (RegExp(entry.value, caseSensitive: false).hasMatch(body)) {
-        category = entry.key;
+  double amount = 0;
+  for (final pattern in amountPatterns) {
+    final match = pattern.firstMatch(body);
+    if (match != null) {
+      final parsed = double.tryParse(
+        match.group(1)?.replaceAll(',', '') ?? '0'
+      ) ?? 0;
+      if (parsed > 0) {
+        amount = parsed;
         break;
       }
     }
-
+  }
+  
+  // Sanity check
+  if (amount > 100000 || amount == 0) {
     return Transaction(
-      merchant: merchant,
+      merchant: 'Invalid',
       amount: amount,
-      category: category,
+      category: 'Parse Error',
       date: DateTime.now(),
       isDebit: isDebit,
       rawSms: body,
     );
   }
+
+  // Extract merchant - handles all formats
+  String merchant = 'Unknown';
+  final merchantPatterns = [
+    // SBI: trf to ISSHITA KALIA
+    RegExp(r'(?:trf|transfer)\s+to\s+([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+Ref|\s+If|\s+for|\s+via|$)', caseSensitive: false),
+    // Standard: towards Spotify India
+    RegExp(r'towards\s+([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+for|\s+via|\s+UPI|\s+on|\s+\d)', caseSensitive: false),
+    // Generic: to/from Name
+    RegExp(r'(?:to|from)\s*:?\s*([A-Za-z][A-Za-z0-9\s&]+?)(?:\s+for|\s+via|\s+UPI|\s+Ref|\s+If)', caseSensitive: false),
+  ];
+  
+  for (final pattern in merchantPatterns) {
+    final match = pattern.firstMatch(body);
+    if (match != null) {
+      merchant = match.group(1)?.trim() ?? 'Unknown';
+      if (merchant.isNotEmpty && merchant != 'Unknown') break;
+    }
+  }
+
+  // Detect category
+  String category = 'Unknown';
+  final rules = {
+    'Food': r'swiggy|zomato|dominos|foodpanda|uber.*eats|restaurant',
+    'Grocery': r'bigbasket|blinkit|zepto|dmart|grocery|grofers',
+    'Shopping': r'amazon|flipkart|myntra|ajio|nykaa',
+    'Travel': r'uber|ola|rapido|redbus|makemytrip|irctc',
+    'Utilities': r'jio|airtel|vodafone|bsnl|electricity|recharge',
+    'Entertainment': r'netflix|prime|hotstar|spotify|youtube',
+    'Health': r'pharmacy|medplus|apollo|1mg|netmeds',
+    'Transfer': r'trf|transfer',
+  };
+  for (final entry in rules.entries) {
+    if (RegExp(entry.value, caseSensitive: false).hasMatch(body)) {
+      category = entry.key;
+      break;
+    }
+  }
+
+  return Transaction(
+    merchant: merchant,
+    amount: amount,
+    category: category,
+    date: DateTime.now(),
+    isDebit: isDebit,
+    rawSms: body,
+  );
+}
 
   @override
   Widget build(BuildContext context) {
