@@ -75,16 +75,21 @@ class _HomeScreenState extends State {
   void initState() {
     super.initState();
     _initStorage();
-    platform.setMethodCallHandler((call) async {
+   platform.setMethodCallHandler((call) async {
       if (call.method == 'onSmsReceived') {
         final body = call.arguments['body'] as String;
         final tx = _parseSms(body);
-        setState(() {
-          transactions.insert(0, tx);
-        });
-        _saveTransactions();
+        
+        // Only track debits (money spent), ignore credits
+        if (tx.isDebit) {
+          setState(() {
+            transactions.insert(0, tx);
+          });
+          _saveTransactions();
+        }
       }
     });
+
   }
 
   Future<void> _initStorage() async {
@@ -102,7 +107,7 @@ class _HomeScreenState extends State {
     final list = transactions.map((tx) => (tx as Transaction).toJson()).toList();
     await _prefs?.setString('transactions', jsonEncode(list));
   }
-
+ 
   Transaction _parseSms(String body) {
   final lower = body.toLowerCase();
   
