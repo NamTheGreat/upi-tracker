@@ -80,8 +80,7 @@ class _HomeScreenState extends State {
         final body = call.arguments['body'] as String;
         final tx = _parseSms(body);
         
-        // Only track debits (money spent), ignore credits
-        if (tx.isDebit) {
+        if (tx != null && tx.isDebit) {  // <-- Add tx != null check
           setState(() {
             transactions.insert(0, tx);
           });
@@ -108,7 +107,7 @@ class _HomeScreenState extends State {
     await _prefs?.setString('transactions', jsonEncode(list));
   }
  
-  Transaction _parseSms(String body) {
+  Transaction? _parseSms(String body) {
   final lower = body.toLowerCase();
   
   // Only process UPI-related SMS
@@ -121,15 +120,8 @@ class _HomeScreenState extends State {
                 lower.contains('transfer');
   
   if (!isUPI) {
-    return Transaction(
-      merchant: 'Ignored',
-      amount: 0,
-      category: 'Non-UPI',
-      date: DateTime.now(),
-      isDebit: true,
-      rawSms: body,
-    );
-  }
+    return null;
+  } 
   
   final isDebit = !lower.contains('credited') && !lower.contains('received');
 
