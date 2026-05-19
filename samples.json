@@ -1,0 +1,352 @@
+[
+  {
+    "id": 1,
+    "type": "debit",
+    "sender": "VK-HDFCBK",
+    "amount": "20.00",
+    "message": "Rs.20.00 sent from Ujjivan SFB A/c XX526 to Mr SATI;UPI Ref-613649043560. Avl Bal Rs.57.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 2,
+    "type": "autopay",
+    "sender": "VK-HDFCBK",
+    "amount": "2.00",
+    "message": "Your a/c debited Rs. 2.00 on 15-05-26 towards Google Clo UPI AutoPay; 51984a31f1a31956e063b02fb00a449f@oksbi .Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 3,
+    "type": "mandate",
+    "sender": "VK-HDFCBK",
+    "amount": "15000.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards Google Cloud from 15/05/2026 to 31/12/2036 for Rs. 15000.00, 51984a31f1a31956e063b02fb00a449f@oksbi. Ujjivan SFB"
+  },
+  {
+    "id": 4,
+    "type": "debit",
+    "sender": "AX-SBIUPI",
+    "amount": "45.00",
+    "message": "Rs.45.00 sent from Ujjivan SFB A/c XX526 to GURPAL M;UPI Ref-613316539631. Avl Bal Rs.81.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 5,
+    "type": "credit",
+    "sender": "VM-ICICIB",
+    "amount": "100.00",
+    "message": "Rs.100.00 credited to USFB A/c X526 via UPI from Hima Ka; Ref-613394323109. Avl Bal Rs. 126.11. For queries Call 18002082121"
+  },
+  {
+    "id": 6,
+    "type": "debit",
+    "sender": "VK-HDFCBK",
+    "amount": "250.00",
+    "message": "Rs.250.00 sent from Ujjivan SFB A/c XX526 to SWIGGY;UPI Ref-613517208944. Avl Bal Rs.426.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 7,
+    "type": "debit",
+    "sender": "AX-SBIUPI",
+    "amount": "250.00",
+    "message": "Rs.250.00 sent from Ujjivan SFB A/c XX526 to CHANDIGA;UPI Ref-205948420897. Avl Bal Rs.26.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 8,
+    "type": "credit",
+    "sender": "VK-HDFCBK",
+    "amount": "200.00",
+    "message": "Rs.200.00 credited to USFB A/c X526 via UPI from Hima Ka; Ref-613288459228. Avl Bal Rs. 276.11. For queries Call 18002082121"
+  },
+  {
+    "id": 9,
+    "type": "debit",
+    "sender": "VM-ICICIB",
+    "amount": "120.00",
+    "message": "Rs.120.00 sent from Ujjivan SFB A/c XX526 to CHANDIGA;UPI Ref-205942963878. Avl Bal Rs.76.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 10,
+    "type": "autopay",
+    "sender": "VK-HDFCBK",
+    "amount": "2.00",
+    "message": "Your a/c debited Rs. 2.00 on 15-05-26 towards Google Clo UPI AutoPay; 51984a31f18f1956e063b02fb00a449f@oksbi .Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 11,
+    "type": "mandate",
+    "sender": "VK-HDFCBK",
+    "amount": "15000.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards Google Cloud from 15/05/2026 to 31/12/2036 for Rs. 15000.00, 51984a31f18f1956e063b02fb00a449f@oksbi. Ujjivan SFB"
+  },
+  {
+    "id": 12,
+    "type": "debit",
+    "sender": "AX-SBIUPI",
+    "amount": "84.50",
+    "message": "Rs.84.50 sent from Ujjivan SFB A/c XX526 to ZOMATO LTD;UPI Ref-613520774128. Avl Bal Rs.341.61. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 13,
+    "type": "credit",
+    "sender": "VM-ICICIB",
+    "amount": "500.00",
+    "message": "Rs.500.00 credited to USFB A/c X526 via UPI from NEHA SH; Ref-613522190384. Avl Bal Rs. 841.61. For queries Call 18002082121"
+  },
+  {
+    "id": 14,
+    "type": "debit",
+    "sender": "VK-HDFCBK",
+    "amount": "19.00",
+    "message": "Rs.19.00 sent from Ujjivan SFB A/c XX526 to PAYTMQR;UPI Ref-613526331902. Avl Bal Rs.322.61.Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 15,
+    "type": "credit",
+    "sender": "AX-SBIUPI",
+    "amount": "75.00",
+    "message": "Rs.75.00 credited to USFB A/c X526 via UPI from RAHUL V; Ref-613529880117. Avl Bal Rs. 397.61. For queries Call 18002082121"
+  },
+  {
+    "id": 16,
+    "type": "debit",
+    "sender": "VM-ICICIB",
+    "amount": "399.00",
+    "message": "Rs.399.00 sent from Ujjivan SFB A/c XX526 to NETFLIX IND;UPI Ref-613534902615. Avl Bal Rs. -1.39. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 17,
+    "type": "autopay",
+    "sender": "VK-HDFCBK",
+    "amount": "149.00",
+    "message": "Your a/c debited Rs. 149.00 on 16-05-26 towards Spotify In UPI AutoPay; spfyauto.61354021@oksbi .Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 18,
+    "type": "mandate",
+    "sender": "AX-SBIUPI",
+    "amount": "999.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards Spotify India from 16/05/2026 to 16/05/2031 for Rs. 999.00, spfyauto.61354021@oksbi. Ujjivan SFB"
+  },
+  {
+    "id": 19,
+    "type": "debit",
+    "sender": "VK-HDFCBK",
+    "amount": "62.00",
+    "message": "Rs.62.00 sent from Ujjivan SFB A/c XX526 to B MART;UPI Ref-613542038719. Avl Bal Rs.335.61. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 20,
+    "type": "credit",
+    "sender": "VK-HDFCBK",
+    "amount": "1000.00",
+    "message": "Rs.1000.00 credited to USFB A/c X526 via UPI from ANKIT K; Ref-613545918320. Avl Bal Rs. 1335.61. For queries Call 18002082121"
+  },
+  {
+    "id": 21,
+    "type": "debit",
+    "sender": "AX-SBIUPI",
+    "amount": "31.00",
+    "message": "Rs.31.00 sent from Ujjivan SFB A/c XX526 to TEA STALL;UPI Ref-613548273991. Avl Bal Rs.1304.61. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 22,
+    "type": "autopay",
+    "sender": "VM-ICICIB",
+    "amount": "199.00",
+    "message": "Your a/c debited Rs.199.00 on 17-05-26 towards JioCinema UPI AutoPay; jiocinema.billpay@okhdfcbank .Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 23,
+    "type": "mandate",
+    "sender": "VM-ICICIB",
+    "amount": "1999.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards JioCinema Prem from 17/05/2026 to 17/05/2030 for Rs. 1999.00, jiocinema.billpay@okhdfcbank. Ujjivan SFB"
+  },
+  {
+    "id": 24,
+    "type": "debit",
+    "sender": "VK-HDFCBK",
+    "amount": "180.00",
+    "message": "Rs.180.00 sent from Ujjivan SFB A/c XX526 to BIGBASKET;UPI Ref-613551407662. Avl Bal Rs.1124.61. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 25,
+    "type": "credit",
+    "sender": "AX-SBIUPI",
+    "amount": "320.00",
+    "message": "Rs.320.00 credited to USFB A/c X526 via UPI from PRIYA NA; Ref-613554889034. Avl Bal Rs. 1444.61. For queries Call 18002082121"
+  },
+  {
+    "id": 26,
+    "type": "debit",
+    "sender": "VM-ICICIB",
+    "amount": "710.00",
+    "message": "Rs.710.00 sent from Ujjivan SFB A/c XX526 to RENTPAY;UPI Ref-613559038412. Avl Bal Rs.734.61. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 27,
+    "type": "credit",
+    "sender": "VK-HDFCBK",
+    "amount": "50.00",
+    "message": "Rs.50.00 credited to USFB A/c X526 via UPI from AMIT; Ref-613562473891. Avl Bal Rs. 784.61.For queries Call 18002082121"
+  },
+  {
+    "id": 28,
+    "type": "debit",
+    "sender": "AX-SBIUPI",
+    "amount": "99.00",
+    "message": "Rs.99.00 sent from Ujjivan SFB A/c XX526 to AMAZON PAY;UPI Ref-613565298006. Avl Bal Rs.685.61. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 29,
+    "type": "autopay",
+    "sender": "VK-HDFCBK",
+    "amount": "649.00",
+    "message": "Your a/c debited Rs. 649.00 on 18-05-26 towards Airtel Post UPI AutoPay; airtelpostpaid.9876@airtel .Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 30,
+    "type": "mandate",
+    "sender": "VK-HDFCBK",
+    "amount": "5000.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards Airtel Postpaid from 18/05/2026 to 18/05/2031 for Rs. 5000.00, airtelpostpaid.9876@airtel. Ujjivan SFB"
+  },
+  {
+    "id": 31,
+    "type": "debit",
+    "sender": "VM-ICICIB",
+    "amount": "36.00",
+    "message": "Rs.36.00 sent from Ujjivan SFB A/c XX526 to METRO QR;UPI Ref-613568442009. Avl Bal Rs.649.61. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 32,
+    "type": "credit",
+    "sender": "VM-ICICIB",
+    "amount": "850.00",
+    "message": "Rs.850.00 credited to USFB A/c X526 via UPI from SNEHA R; Ref-613571382705. Avl Bal Rs. 1499.61. For queries Call 18002082121"
+  },
+  {
+    "id": 33,
+    "type": "debit",
+    "sender": "VK-HDFCBK",
+    "amount": "125.00",
+    "message": "Rs.125.00 sent from Ujjivan SFB A/c XX526 to OLA CABS;UPI Ref-613574926340. Avl Bal Rs.1374.61. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 34,
+    "type": "autopay",
+    "sender": "AX-SBIUPI",
+    "amount": "499.00",
+    "message": "Your a/c debited Rs. 499.00 on 19-05-26 towards Hotstar Sub UPI AutoPay; hotstarupi.7742@oksbi.Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 35,
+    "type": "mandate",
+    "sender": "AX-SBIUPI",
+    "amount": "1499.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards Hotstar Sub from 19/05/2026 to 19/05/2030 for Rs.1499.00, hotstarupi.7742@oksbi. Ujjivan SFB"
+  },
+  {
+    "id": 36,
+    "type": "debit",
+    "sender": "VK-HDFCBK",
+    "amount": "265.50",
+    "message": "Rs.265.50 sent from Ujjivan SFB A/c XX526 to BLINKIT;UPI Ref-613578341552. Avl Bal Rs.1109.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 37,
+    "type": "credit",
+    "sender": "AX-SBIUPI",
+    "amount": "1200.00",
+    "message": "Rs.1200.00 credited to USFB A/c X526 via UPI from OFFICE; Ref-613581004639. Avl Bal Rs. 2309.11. For queries Call 18002082121"
+  },
+  {
+    "id": 38,
+    "type": "debit",
+    "sender": "VM-ICICIB",
+    "amount": "10.00",
+    "message": "Rs.10.00 sent from Ujjivan SFB A/c XX526 to POOJA FL;UPI Ref-613584779043. Avl Bal Rs.2299.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 39,
+    "type": "autopay",
+    "sender": "VK-HDFCBK",
+    "amount": "89.00",
+    "message": "Your a/c debited Rs. 89.00 on 20-05-26 towards YoutubePrem UPI AutoPay; ytprem.5561@okicici .Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 40,
+    "type": "mandate",
+    "sender": "VM-ICICIB",
+    "amount": "2000.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards Youtube Premium from 20/05/2026 to 20/05/2031 for Rs. 2000.00, ytprem.5561@okicici. Ujjivan SFB"
+  },
+  {
+    "id": 41,
+    "type": "debit",
+    "sender": "AX-SBIUPI",
+    "amount": "58.00",
+    "message": "Rs.58.00 sent from Ujjivan SFB A/c XX526 to MEDPLUS;UPI Ref-613587602814. Avl Bal Rs.2241.11.Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 42,
+    "type": "credit",
+    "sender": "VK-HDFCBK",
+    "amount": "275.00",
+    "message": "Rs.275.00 credited to USFB A/c X526 via UPI from KIRAN S; Ref-613590193472. Avl Bal Rs. 2516.11. For queries Call 18002082121"
+  },
+  {
+    "id": 43,
+    "type": "debit",
+    "sender": "VK-HDFCBK",
+    "amount": "540.00",
+    "message": "Rs.540.00 sent from Ujjivan SFB A/c XX526 to IRCTC UPI;UPI Ref-613593735118. Avl Bal Rs.1976.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 44,
+    "type": "autopay",
+    "sender": "AX-SBIUPI",
+    "amount": "799.00",
+    "message": "Your a/c debited Rs.799.00 on 21-05-26 towards ACT Fibern UPI AutoPay; actfib.30291@icici .Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 45,
+    "type": "mandate",
+    "sender": "AX-SBIUPI",
+    "amount": "10000.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards ACT Fibernet from 21/05/2026 to 21/05/2032 for Rs. 10000.00, actfib.30291@icici. Ujjivan SFB"
+  },
+  {
+    "id": 46,
+    "type": "debit",
+    "sender": "VM-ICICIB",
+    "amount": "72.00",
+    "message": "Rs.72.00 sent from Ujjivan SFB A/c XX526 to FRESH MENU;UPI Ref-613596448206. Avl Bal Rs.1904.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 47,
+    "type": "credit",
+    "sender": "VM-ICICIB",
+    "amount": "430.00",
+    "message": "Rs.430.00 credited to USFB A/c X526 via UPI from VIKAS M; Ref-613599006827. Avl Bal Rs. 2334.11. For queries Call 18002082121"
+  },
+  {
+    "id": 48,
+    "type": "debit",
+    "sender": "AX-SBIUPI",
+    "amount": "1500.00",
+    "message": "Rs.1500.00 sent from Ujjivan SFB A/c XX526 to LANDLORD;UPI Ref-613602718903. Avl Bal Rs.834.11. Not you? Call 18002082121 or SMS UPIBLOCK to 9243232121"
+  },
+  {
+    "id": 49,
+    "type": "autopay",
+    "sender": "VK-HDFCBK",
+    "amount": "25.00",
+    "message": "Your a/c debited Rs. 25.00 on 22-05-26 towards PhonePe Ins UPI AutoPay; ppeins.aa9821@yesbank .Not you? call 18002082121.Ujjivan SFB"
+  },
+  {
+    "id": 50,
+    "type": "mandate",
+    "sender": "VK-HDFCBK",
+    "amount": "500.00",
+    "message": "UPI Autopay Mandate with ASPRESENTED is successfully created towards PhonePe Insure from 22/05/2026 to 22/05/2029 for Rs. 500.00, ppeins.aa9821@yesbank. Ujjivan SFB"
+  }
+]
