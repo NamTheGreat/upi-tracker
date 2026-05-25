@@ -56,7 +56,7 @@ class _FilterSheetState extends State<FilterSheet> {
           const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           DropdownButtonFormField<String?>(
-            value: _category,
+            initialValue: _category,
             decoration: const InputDecoration(
               labelText: 'Category',
               border: OutlineInputBorder(),
