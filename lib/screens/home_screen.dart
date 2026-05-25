@@ -6,6 +6,7 @@ import '../services/sms_parser.dart';
 import '../widgets/transaction_card.dart';
 import '../widgets/filter_sheet.dart';
 import 'transaction_form.dart';
+import 'budget_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,7 @@ class _HomeScreenState extends State {
   String? _filterCategory;
   DateTime? _filterStartDate;
   DateTime? _filterEndDate;
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -32,9 +34,7 @@ class _HomeScreenState extends State {
 
   Future<void> _init() async {
     await _storage.init();
-    setState(() {
-      _transactions = _storage.loadTransactions();
-    });
+    setState(() => _transactions = _storage.loadTransactions());
     _setupSmsListener();
   }
 
@@ -44,9 +44,7 @@ class _HomeScreenState extends State {
         final body = call.arguments['body'] as String;
         final tx = _parser.parse(body);
         if (tx != null && tx.isDebit) {
-          setState(() {
-            _transactions.insert(0, tx);
-          });
+          setState(() => _transactions.insert(0, tx));
           _storage.saveTransactions(_transactions.cast<Transaction>());
         }
       }
@@ -125,8 +123,7 @@ class _HomeScreenState extends State {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTransactionList() {
     final displayList = _filteredTransactions;
 
     return Scaffold(
@@ -172,6 +169,35 @@ class _HomeScreenState extends State {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showForm(),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screens = [
+      _buildTransactionList(),
+      const BudgetScreen(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: screens,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list),
+            label: 'Transactions',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet),
+            label: 'Budget',
+          ),
+        ],
       ),
     );
   }
