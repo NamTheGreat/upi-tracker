@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../models/transaction.dart';
+import '../services/history_service.dart';
 
 class TransactionForm extends StatefulWidget {
   final Transaction? transaction;
@@ -18,11 +19,13 @@ class TransactionForm extends StatefulWidget {
   State createState() => _TransactionFormState();
 }
 
-class _TransactionFormState extends State<TransactionForm> {
+class _TransactionFormState extends State<<TransactionForm> {
   late final TextEditingController _merchantController;
   late final TextEditingController _amountController;
   late String _selectedCategory;
   late DateTime _selectedDate;
+  final HistoryService _history = HistoryService();
+  String? _categoryHint;
 
   @override
   void initState() {
@@ -32,6 +35,21 @@ class _TransactionFormState extends State<TransactionForm> {
     _amountController = TextEditingController(text: isEdit ? widget.transaction!.amount.toString() : '');
     _selectedCategory = isEdit ? widget.transaction!.category : CATEGORIES[0];
     _selectedDate = isEdit ? widget.transaction!.date : DateTime.now();
+    _history.init();
+    _checkHistory();
+  }
+
+  void _checkHistory() {
+    final merchant = _merchantController.text.trim();
+    if (merchant.isNotEmpty) {
+      final predicted = _history.predictCategory(merchant);
+      if (predicted != null && predicted != _selectedCategory) {
+        setState(() {
+          _categoryHint = 'Usually $predicted';
+          _selectedCategory = predicted;
+        });
+      }
+    }
   }
 
   void _validateAndSave() {
@@ -65,7 +83,7 @@ class _TransactionFormState extends State<TransactionForm> {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text(errorTitle!),
+          title: Text(errorTitle),
           content: Text(errorMessage!),
           actions: [
             TextButton(
@@ -91,6 +109,9 @@ class _TransactionFormState extends State<TransactionForm> {
       rawSms: isEdit ? widget.transaction!.rawSms : null,
       isManual: isEdit ? widget.transaction!.isManual : true,
     );
+
+    // Learn from user
+    _history.learn(merchant, _selectedCategory);
 
     widget.onSave(newTx, widget.index);
     Navigator.pop(context);
@@ -122,6 +143,7 @@ class _TransactionFormState extends State<TransactionForm> {
       isManual: true,
     );
 
+    _history.learn(merchant, _selectedCategory);
     widget.onSave(duplicate, null);
     Navigator.pop(context);
   }
@@ -175,17 +197,10 @@ class _TransactionFormState extends State<TransactionForm> {
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              TextField(
-                controller: _merchantController,
-                decoration: const InputDecoration(
-                  labelText: 'Merchant *',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.store),
-                ),
-              ),
-              const SizedBox(height: 16),
+              // Amount FIRST (reduced cognitive load)
               TextField(
                 controller: _amountController,
+                autofocus: !isEdit, // Auto-focus on amount for new entries
                 decoration: const InputDecoration(
                   labelText: 'Amount (₹) *',
                   border: OutlineInputBorder(),
@@ -194,37 +209,79 @@ class _TransactionFormState extends State<TransactionForm> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 16),
+              // Merchant SECOND
+              TextField(
+                controller: _merchantController,
+                decoration: const InputDecoration(
+                  labelText: 'Merchant *',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.store),
+                ),
+                onChanged: (val) {
+                  if (val.trim().isNotEmpty) {
+                    final predicted = _history.predictCategory(val.trim());
+                    if (predicted != null) {
+                      setState(() {
+                        _categoryHint = 'Usually $predicted';
+                        _selectedCategory = predicted;
+                      });
+                    }
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              // Category THIRD with hint
               DropdownButtonFormField<String>(
                 initialValue: _selectedCategory,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Category',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.category),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.category),
+                  helperText: _categoryHint,
+                  helperStyle: TextStyle(
+                    color: Colors.blue.shade400,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
                 items: CATEGORIES.map((cat) => DropdownMenuItem(
                   value: cat,
                   child: Text(cat),
                 )).toList(),
-                onChanged: (val) => setState(() => _selectedCategory = val!),
+                onChanged: (val) => setState(() {
+                  _selectedCategory = val!;
+                  _categoryHint = null;
+                }),
               ),
               const SizedBox(height: 16),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade400),
-                ),
-                leading: const Icon(Icons.calendar_today),
-                title: const Text('Date'),
-                subtitle: Text('${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) setState(() => _selectedDate = picked);
-                },
+              // Date collapsed to chip (expandable)
+              Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Today'),
+                    selected: _isToday(_selectedDate),
+                    onSelected: (_) => setState(() => _selectedDate = DateTime.now()),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('Yesterday'),
+                    selected: _isYesterday(_selectedDate),
+                    onSelected: (_) => setState(() => _selectedDate = DateTime.now().subtract(const Duration(days: 1))),
+                  ),
+                  const SizedBox(width: 8),
+                  ActionChip(
+                    avatar: const Icon(Icons.calendar_today, size: 18),
+                    label: Text(_isToday(_selectedDate) || _isYesterday(_selectedDate) ? 'Custom' : '${_selectedDate.day}/${_selectedDate.month}'),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) setState(() => _selectedDate = picked);
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               Row(
@@ -263,6 +320,16 @@ class _TransactionFormState extends State<TransactionForm> {
         ),
       ),
     );
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year && date.month == now.month && date.day == now.day;
+  }
+
+  bool _isYesterday(DateTime date) {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    return date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day;
   }
 
   @override
