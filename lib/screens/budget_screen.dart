@@ -10,17 +10,18 @@ class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
 
   @override
-  State createState() => _BudgetScreenState();
+  State<BudgetScreen> createState() => _BudgetScreenState();
 }
 
-class _BudgetScreenState extends State {
+class _BudgetScreenState extends State<BudgetScreen> {
   final BudgetService _budgetService = BudgetService();
   final StorageService _storageService = StorageService();
-  
+
   List<Budget> _budgets = [];
-  List<Transaction> _transactions = [];
+  List<<Transaction> _transactions = [];
   bool _loading = true;
   DateTime _currentMonth = DateTime.now();
+  bool _showAllCategories = false;
 
   @override
   void initState() {
@@ -31,7 +32,7 @@ class _BudgetScreenState extends State {
   Future<void> _loadData() async {
     await _budgetService.init();
     await _storageService.init();
-    
+
     setState(() {
       _transactions = _storageService.loadTransactions();
       _budgets = _budgetService.loadBudgets(_currentMonth.month, _currentMonth.year);
@@ -42,14 +43,30 @@ class _BudgetScreenState extends State {
   double get _totalSpent => _budgetService.getTotalSpent(_currentMonth.month, _currentMonth.year, _transactions);
   double get _totalLimit => _budgetService.getTotalLimit(_budgets);
 
-  void _showBudgetForm({Budget? existing}) {
-    final limitController = TextEditingController();
-    String selectedCategory = existing?.category ?? CATEGORIES[0];
-    double threshold = existing?.alertThreshold ?? 0.8;
+  List<String> get _activeCategories {
+    final withBudget = _budgets.map((b) => b.category).toSet();
+    final withTransactions = _transactions
+        .where((t) => t.date.month == _currentMonth.month && t.date.year == _currentMonth.year)
+        .map((t) => t.category)
+        .toSet();
+    return withBudget.union(withTransactions).toList()..sort();
+  }
 
-    if (existing != null) {
-      limitController.text = existing.limit.toString();
-    }
+  List<String> get _suggestedCategories {
+    if (_activeCategories.isNotEmpty) return _activeCategories;
+    return ['Food', 'Grocery', 'Travel'];
+  }
+
+  List<String> get _hiddenCategories {
+    return CATEGORIES.where((c) => !_activeCategories.contains(c)).toList();
+  }
+
+  void _showBudgetForm({String? category, Budget? existing}) {
+    final limitController = TextEditingController(
+      text: existing != null ? existing.limit.toString() : '',
+    );
+    double threshold = existing?.alertThreshold ?? 0.8;
+    String selectedCategory = category ?? existing?.category ?? CATEGORIES[0];
 
     showModalBottomSheet(
       context: context,
@@ -76,7 +93,7 @@ class _BudgetScreenState extends State {
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
-                if (existing == null)
+                if (existing == null && category == null)
                   DropdownButtonFormField<String>(
                     initialValue: selectedCategory,
                     decoration: const InputDecoration(
@@ -91,12 +108,13 @@ class _BudgetScreenState extends State {
                   )
                 else
                   Text(
-                    existing.category,
+                    selectedCategory,
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: limitController,
+                  autofocus: true,
                   decoration: const InputDecoration(
                     labelText: 'Monthly Limit (₹)',
                     border: OutlineInputBorder(),
@@ -129,7 +147,7 @@ class _BudgetScreenState extends State {
                         if (limit <= 0) return;
 
                         final budget = Budget(
-                          category: existing?.category ?? selectedCategory,
+                          category: selectedCategory,
                           limit: limit,
                           alertThreshold: threshold,
                           month: _currentMonth.month,
@@ -166,6 +184,23 @@ class _BudgetScreenState extends State {
     });
   }
 
+  String? _findSuggestion(String category, double spent, double limit) {
+    if (spent <= limit) return null;
+
+    final overAmount = spent - limit;
+    for (final budget in _budgets) {
+      if (budget.category == category) continue;
+      final catSpent = _budgetService.getSpent(
+        budget.category, _currentMonth.month, _currentMonth.year, _transactions,
+      );
+      final remaining = budget.limit - catSpent;
+      if (remaining > overAmount) {
+        return 'Move ₹${overAmount.toStringAsFixed(0)} from ${budget.category}?';
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -173,6 +208,8 @@ class _BudgetScreenState extends State {
     }
 
     final monthName = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final displayCategories = _showAllCategories ? CATEGORIES : _suggestedCategories;
+    final hasMore = _hiddenCategories.isNotEmpty && !_showAllCategories;
 
     return Scaffold(
       appBar: AppBar(
@@ -181,7 +218,6 @@ class _BudgetScreenState extends State {
       ),
       body: Column(
         children: [
-          // Month selector
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -202,70 +238,91 @@ class _BudgetScreenState extends State {
               ],
             ),
           ),
-          
-          // Total budget progress
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: BudgetProgress(
-                  label: 'Total Budget',
-                  spent: _totalSpent,
-                  limit: _totalLimit,
-                  alertThreshold: 0.8,
+          if (_budgets.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Card(
+                elevation: 0,
+                color: Colors.grey.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: BudgetProgress(
+                    label: 'Total Budget',
+                    spent: _totalSpent,
+                    limit: _totalLimit,
+                    alertThreshold: 0.8,
+                  ),
                 ),
               ),
             ),
-          ),
-
-          const Divider(),
-
-          // Category budgets
+          const Divider(height: 1),
           Expanded(
-            child: _budgets.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.account_balance_wallet, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        const Text('No budgets set', style: TextStyle(fontSize: 18)),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Tap + to set your first budget',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      ],
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: displayCategories.length + (hasMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (hasMore && index == displayCategories.length) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: OutlinedButton.icon(
+                      onPressed: () => setState(() => _showAllCategories = true),
+                      icon: const Icon(Icons.expand_more),
+                      label: Text('${_hiddenCategories.length} more categories'),
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _budgets.length,
-                    itemBuilder: (context, index) {
-                      final budget = _budgets[index];
-                      final spent = _budgetService.getSpent(
-                        budget.category,
-                        _currentMonth.month,
-                        _currentMonth.year,
-                        _transactions,
-                      );
-                      return BudgetProgress(
-                        label: budget.category,
-                        spent: spent,
-                        limit: budget.limit,
-                        alertThreshold: budget.alertThreshold,
-                        onTap: () => _showBudgetForm(existing: budget),
-                      );
-                    },
+                  );
+                }
+
+                final category = displayCategories[index];
+                final existing = _budgets.firstWhere(
+                  (b) => b.category == category,
+                  orElse: () => Budget(
+                    category: category,
+                    limit: 0,
+                    month: _currentMonth.month,
+                    year: _currentMonth.year,
                   ),
+                );
+
+                final spent = _budgetService.getSpent(
+                  category, _currentMonth.month, _currentMonth.year, _transactions,
+                );
+
+                if (existing.limit <= 0) {
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.grey.shade100,
+                      child: Icon(Icons.add, color: Colors.grey.shade400),
+                    ),
+                    title: Text(category),
+                    subtitle: Text('₹${spent.toStringAsFixed(0)} spent this month'),
+                    trailing: TextButton(
+                      onPressed: () => _showBudgetForm(category: category),
+                      child: const Text('SET BUDGET'),
+                    ),
+                  );
+                }
+
+                return BudgetProgress(
+                  label: category,
+                  spent: spent,
+                  limit: existing.limit,
+                  alertThreshold: existing.alertThreshold,
+                  suggestion: _findSuggestion(category, spent, existing.limit),
+                  onTap: () => _showBudgetForm(category: category, existing: existing),
+                );
+              },
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showBudgetForm(),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _budgets.isEmpty
+          ? FloatingActionButton.extended(
+              onPressed: () => _showBudgetForm(),
+              icon: const Icon(Icons.add),
+              label: const Text('Set Budget'),
+            )
+          : null,
     );
   }
 }
